@@ -15,6 +15,8 @@
 package com.commonsware.cwac.richedit;
 
 import android.app.Activity;
+import android.support.v7.app.ActionBarActivity;
+import android.support.v7.view.ActionMode.Callback;
 import android.view.ActionMode;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -45,7 +47,7 @@ public class EditorActionModeCallback {
   }
 
   public static class Native extends EditorActionModeCallback implements
-      ActionMode.Callback {
+      ActionMode.Callback , Callback{
     Activity host=null;
 
     public Native(Activity host, int menuResource, RichEditText editor,
@@ -91,7 +93,11 @@ public class EditorActionModeCallback {
 
       if (next != null) {
         next.setSelection(new Selection(editor));
-        host.startActionMode((EditorActionModeCallback.Native)next);
+        if(host instanceof ActionBarActivity) {
+            ActionBarActivity aba = (ActionBarActivity) host;
+            aba.startSupportActionMode((EditorActionModeCallback.Native)next);
+        }
+        //host.startActionMode((EditorActionModeCallback.Native)next);
         mode.finish();
 
         return(true);
@@ -101,5 +107,62 @@ public class EditorActionModeCallback {
       //
       return(listener.doAction(item.getItemId()));
     }
+    
+    
+    @Override
+    public boolean onActionItemClicked(android.support.v7.view.ActionMode mode, MenuItem item) {
+        EditorActionModeCallback next=chains.get(item.getItemId());
+
+        if (next != null) {
+          next.setSelection(new Selection(editor));
+          if(host instanceof ActionBarActivity) {
+              ActionBarActivity aba = (ActionBarActivity) host;
+              aba.startSupportActionMode((EditorActionModeCallback.Native)next);
+          }
+//          host.startActionMode((EditorActionModeCallback.Native)next);
+          mode.finish();
+
+          return(true);
+        }
+        //
+        // mode.finish();
+        //
+        return(listener.doAction(item.getItemId()));
+    }
+
+    @Override
+    public boolean onCreateActionMode(android.support.v7.view.ActionMode mode, Menu menu) {
+        MenuInflater inflater=mode.getMenuInflater();
+
+        MenuItem item=menu.findItem(android.R.id.selectAll);
+
+        if (item != null) {
+          item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM
+              | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+        }
+
+        inflater.inflate(menuResource, menu);
+        listener.setIsShowing(true);
+
+        return(true);
+    }
+
+    @Override
+    public void onDestroyActionMode(android.support.v7.view.ActionMode mode) {
+        listener.setIsShowing(false);
+        if(host instanceof ActionBarActivity) {
+            ActionBarActivity aba = (ActionBarActivity) host;
+        }
+    }
+
+    @Override
+    public boolean onPrepareActionMode(android.support.v7.view.ActionMode mode, Menu menu) {
+        if (selection != null) {
+            selection.apply(editor);
+          }
+
+          return(false);
+    }
+
   }
 }
